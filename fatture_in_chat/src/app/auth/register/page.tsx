@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import supabase from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
 
 export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
@@ -10,6 +11,7 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const router = useRouter();
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -35,6 +37,9 @@ export default function Register() {
       setError(error.message);
     } else {
       setSuccess(true);
+      setTimeout(() => {
+        router.push("/richieste");
+      }, 2000);
     }
     setLoading(false);
   }

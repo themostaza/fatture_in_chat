@@ -2,9 +2,17 @@
 import Link from "next/link";
 import { useState } from "react";
 import { UserSquare, ListChecks, User, LogOut, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { useRouter } from "next/navigation";
+import supabase from "@/lib/supabase/client";
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
+  const router = useRouter();
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    router.push("/auth/login");
+  }
 
   return (
     <aside className={`bg-gray-100 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col justify-between min-h-screen py-8 px-2 transition-all duration-200 ${collapsed ? 'w-16' : 'w-56'}`}>
@@ -37,7 +45,7 @@ export function Sidebar() {
           <User size={22} />
           {!collapsed && <span>Profilo</span>}
         </Link>
-        <button className="flex items-center gap-3 px-3 py-2 rounded-md text-gray-600 dark:text-gray-300 hover:bg-red-100 dark:hover:bg-red-900 font-medium transition-colors w-full text-left">
+        <button onClick={handleLogout} className="flex items-center gap-3 px-3 py-2 rounded-md text-gray-600 dark:text-gray-300 hover:bg-red-100 dark:hover:bg-red-900 font-medium transition-colors w-full text-left">
           <LogOut size={22} />
           {!collapsed && <span>Esci</span>}
         </button>

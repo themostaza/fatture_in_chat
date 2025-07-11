@@ -1,15 +1,24 @@
 "use client";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import supabase from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { getCurrentUser } from "@/lib/supabase/client";
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+
+  useEffect(() => {
+    getCurrentUser().then((user) => {
+      if (user) {
+        router.replace("/richieste");
+      }
+    });
+  }, [router]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
