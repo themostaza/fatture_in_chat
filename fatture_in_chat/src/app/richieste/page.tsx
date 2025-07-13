@@ -1,11 +1,11 @@
 import React from "react";
-import { FilePlus } from "lucide-react";
+import { FilePlus, Clock, CheckCircle, XCircle, BarChart3 } from "lucide-react";
 
 const kpiData = [
-  { label: "Totali", value: 32 },
-  { label: "In attesa", value: 7 },
-  { label: "Approvate", value: 21 },
-  { label: "Rifiutate", value: 4 },
+  { label: "Totali", value: 32, icon: BarChart3, color: "text-blue-600 dark:text-blue-400" },
+  { label: "In attesa", value: 7, icon: Clock, color: "text-yellow-600 dark:text-yellow-400" },
+  { label: "Approvate", value: 21, icon: CheckCircle, color: "text-green-600 dark:text-green-400" },
+  { label: "Rifiutate", value: 4, icon: XCircle, color: "text-red-600 dark:text-red-400" },
 ];
 
 const richieste = [
@@ -17,59 +17,141 @@ const richieste = [
 
 export default function RichiestePage() {
   return (
-    <div className="p-4 sm:p-8 w-full max-w-6xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Richieste di fatturazione</h1>
-        <button className="flex items-center gap-2 px-4 py-2 rounded-md bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900 font-semibold shadow hover:bg-gray-700 dark:hover:bg-gray-200 transition-all">
-          <FilePlus size={18} />
-          <span className="hidden sm:inline">Nuova richiesta</span>
-        </button>
-      </div>
-      {/* KPI */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-        {kpiData.map((kpi) => (
-          <div key={kpi.label} className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4 flex flex-col items-center shadow-sm">
-            <span className="text-lg font-semibold text-gray-700 dark:text-gray-200">{kpi.value}</span>
-            <span className="text-xs text-gray-500 dark:text-gray-400 mt-1">{kpi.label}</span>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+            <div>
+              <h1 className="text-3xl font-thin text-gray-900 dark:text-white mb-2">
+                Richieste
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400 font-light">
+                Richieste pervenute da dialoghi con l&apos;AI nelle chat
+              </p>
+            </div>
+            <button className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-full font-medium hover:bg-blue-700 transition-all duration-200 shadow-sm">
+              <FilePlus size={20} />
+              <span>Nuova richiesta</span>
+            </button>
           </div>
-        ))}
-      </div>
-      {/* Tabella */}
-      <div className="overflow-x-auto rounded-lg shadow">
-        <table className="min-w-full bg-white dark:bg-gray-900 text-sm">
-          <thead>
-            <tr className="bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-200">
-              <th className="px-4 py-2 text-left">ID</th>
-              <th className="px-4 py-2 text-left">Azienda</th>
-              <th className="px-4 py-2 text-left">Oggetto</th>
-              <th className="px-4 py-2 text-left">Stato</th>
-              <th className="px-4 py-2 text-left">Data</th>
-              <th className="px-4 py-2 text-left">Azioni</th>
-            </tr>
-          </thead>
-          <tbody>
-            {richieste.map((r) => (
-              <tr key={r.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                <td className="px-4 py-2 font-mono">{r.id}</td>
-                <td className="px-4 py-2">{r.azienda}</td>
-                <td className="px-4 py-2">{r.oggetto}</td>
-                <td className="px-4 py-2">
-                  <span className={`px-2 py-1 rounded text-xs font-semibold 
-                    ${r.stato === "Approvata" ? "bg-green-200 text-green-800" : ""}
-                    ${r.stato === "Rifiutata" ? "bg-red-200 text-red-800" : ""}
-                    ${r.stato === "In attesa" ? "bg-yellow-200 text-yellow-800" : ""}
-                  `}>
-                    {r.stato}
-                  </span>
-                </td>
-                <td className="px-4 py-2 whitespace-nowrap">{r.data}</td>
-                <td className="px-4 py-2">
-                  <button className="px-3 py-1 rounded bg-gray-900 text-white text-xs font-semibold hover:bg-gray-700 transition">Dettagli</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        </div>
+
+        {/* KPI Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+          {kpiData.map((kpi) => {
+            const IconComponent = kpi.icon;
+            return (
+              <div
+                key={kpi.label}
+                className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-200/50 dark:border-gray-700/50 hover:shadow-md transition-shadow duration-200"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className={`w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center ${kpi.color}`}>
+                    <IconComponent size={20} />
+                  </div>
+                </div>
+                <div className="text-2xl font-thin text-gray-900 dark:text-white mb-1">
+                  {kpi.value}
+                </div>
+                <div className="text-sm text-gray-500 dark:text-gray-400">
+                  {kpi.label}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Table */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200/50 dark:border-gray-700/50 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gray-50 dark:bg-gray-700/50">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    ID
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Azienda
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Oggetto
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Stato
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Data
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Azioni
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                {richieste.map((r) => (
+                  <tr
+                    key={r.id}
+                    className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors duration-150"
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-mono text-gray-900 dark:text-gray-100">
+                        #{r.id}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                        {r.azienda}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm text-gray-900 dark:text-gray-100">
+                        {r.oggetto}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span
+                        className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                          r.stato === "Approvata"
+                            ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
+                            : r.stato === "Rifiutata"
+                            ? "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
+                            : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
+                        }`}
+                      >
+                        {r.stato === "Approvata" && <CheckCircle className="w-3 h-3 mr-1" />}
+                        {r.stato === "Rifiutata" && <XCircle className="w-3 h-3 mr-1" />}
+                        {r.stato === "In attesa" && <Clock className="w-3 h-3 mr-1" />}
+                        {r.stato}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-500 dark:text-gray-400">
+                        {new Date(r.data).toLocaleDateString('it-IT', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric'
+                        })}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <button className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-200">
+                        Dettagli
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Empty State Footer */}
+        <div className="mt-8 text-center">
+          <p className="text-gray-500 dark:text-gray-400 text-sm">
+            Mostrando {richieste.length} di {kpiData[0].value} richieste
+          </p>
+        </div>
       </div>
     </div>
   );

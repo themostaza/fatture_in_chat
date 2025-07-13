@@ -1,20 +1,28 @@
-import { createClient } from '@supabase/supabase-js';
+import { createBrowserClient } from '@supabase/ssr'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+export function createClient() {
+  return createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+}
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
-export default supabase;
+// Mantieni la compatibilità con il codice esistente
+export const supabase = createClient()
+export default supabase
 
 /**
  * Crea un client Supabase autenticato con un access token (JWT), utile per le API route.
  */
 export function getSupabaseServerClient(accessToken?: string) {
   if (!accessToken) return supabase;
-  return createClient(supabaseUrl, supabaseAnonKey, {
-    global: { headers: { Authorization: `Bearer ${accessToken}` } },
-  });
+  return createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      global: { headers: { Authorization: `Bearer ${accessToken}` } },
+    }
+  );
 }
 
 /**

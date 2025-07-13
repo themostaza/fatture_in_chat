@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { Plus, Info, KeyRound, Eye, EyeOff, X } from "lucide-react";
+import { Plus, Info, KeyRound, Eye, EyeOff, X, User, Building2, Hash } from "lucide-react";
 import supabase, { getCurrentUser } from "@/lib/supabase/client";
 import { ENTITY_TYPES } from "@/lib/supabase/entityTypes";
 
@@ -37,6 +37,10 @@ export default function ProfilePage() {
   const [showModal, setShowModal] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showRepeat, setShowRepeat] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({ newPassword: '', confirmPassword: '' });
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [entities, setEntities] = useState<Entity[]>([]);
@@ -46,7 +50,6 @@ export default function ProfilePage() {
   const [addEntityError, setAddEntityError] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', partita_iva: '', tipo: ENTITY_TYPES[0] });
 
-  // 1. Stato per la modale di modifica e l'entità selezionata
   const [showEditEntityModal, setShowEditEntityModal] = useState(false);
   const [editEntity, setEditEntity] = useState<Entity | null>(null);
   const [editForm, setEditForm] = useState({ name: '', partita_iva: '', tipo: ENTITY_TYPES[0] });
@@ -66,13 +69,25 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="p-8 w-full max-w-3xl mx-auto text-center text-gray-500 dark:text-gray-400">Caricamento profilo...</div>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 bg-blue-600 rounded-full animate-pulse mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Caricamento profilo...</p>
+        </div>
+      </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="p-8 w-full max-w-3xl mx-auto text-center text-red-500 dark:text-red-400">Utente non autenticato.</div>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <X className="w-6 h-6 text-red-600 dark:text-red-400" />
+          </div>
+          <p className="text-red-600 dark:text-red-400">Utente non autenticato</p>
+        </div>
+      </div>
     );
   }
 
@@ -80,7 +95,6 @@ export default function ProfilePage() {
     e.preventDefault();
     setAddEntityLoading(true);
     setAddEntityError(null);
-    // Recupera il token JWT dalla sessione Supabase
     const { data: { session } } = await supabase.auth.getSession();
     const accessToken = session?.access_token;
     const res = await fetch('/api/entities', {
@@ -100,7 +114,6 @@ export default function ProfilePage() {
     setAddEntityLoading(false);
     setForm({ name: '', partita_iva: '', tipo: ENTITY_TYPES[0] });
     setShowAddEntityModal(false);
-    // Refetch entità
     setEntitiesLoading(true);
     fetchUserEntities().then((ents) => {
       setEntities(ents);
@@ -108,7 +121,6 @@ export default function ProfilePage() {
     });
   }
 
-  // 2. Funzione per aprire la modale di modifica
   function handleEditClick(entity: Entity) {
     setEditEntity(entity);
     setEditForm({
@@ -119,7 +131,6 @@ export default function ProfilePage() {
     setShowEditEntityModal(true);
   }
 
-  // 3. Funzione per salvare la modifica
   async function handleEditEntity(e: React.FormEvent) {
     e.preventDefault();
     if (!editEntity) return;
@@ -150,7 +161,6 @@ export default function ProfilePage() {
     setEditEntityLoading(false);
     setShowEditEntityModal(false);
     setEditEntity(null);
-    // Refetch entità
     setEntitiesLoading(true);
     fetchUserEntities().then((ents) => {
       setEntities(ents);
@@ -158,269 +168,456 @@ export default function ProfilePage() {
     });
   }
 
+  async function handlePasswordChange(e: React.FormEvent) {
+    e.preventDefault();
+    setPasswordError(null);
+    setPasswordSuccess(false);
+    
+    const { newPassword, confirmPassword } = passwordForm;
+    
+    // Validazione
+    if (!newPassword || !confirmPassword) {
+      setPasswordError('Compilare tutti i campi');
+      return;
+    }
+    
+    if (newPassword.length < 6) {
+      setPasswordError('La password deve essere di almeno 6 caratteri');
+      return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Le password non corrispondono');
+      return;
+    }
+    
+    setPasswordLoading(true);
+    
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+      
+      if (error) {
+        setPasswordError(error.message);
+        setPasswordLoading(false);
+        return;
+      }
+      
+      setPasswordSuccess(true);
+      setPasswordForm({ newPassword: '', confirmPassword: '' });
+      setPasswordLoading(false);
+      
+      // Chiudi il modal dopo 2 secondi
+      setTimeout(() => {
+        setShowModal(false);
+        setPasswordSuccess(false);
+      }, 2000);
+      
+    } catch {
+      setPasswordError('Errore durante il cambio password');
+      setPasswordLoading(false);
+    }
+  }
+
   return (
-    <div className="p-4 sm:p-8 w-full max-w-3xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">Profilo</h1>
-      <div className="bg-white dark:bg-gray-900 rounded-lg shadow p-6 mb-8 flex flex-col gap-2">
-        <div className="flex flex-col sm:flex-row gap-2 sm:gap-8 items-center justify-between">
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-8">
-            <div>
-              <span className="block text-gray-500 dark:text-gray-400 text-xs">Nome</span>
-              <span className="font-semibold text-gray-900 dark:text-gray-100">{user.nome || "-"}</span>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-thin text-gray-900 dark:text-white mb-2">
+            Profilo
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 font-light">
+            Gestisci le tue informazioni personali e le entità fiscali
+          </p>
+        </div>
+
+        {/* User Info Card */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200/50 dark:border-gray-700/50 p-6 mb-8">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+            <div className="flex items-center gap-6">
+              <div className="space-y-4">
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nome</p>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">
+                        {user.nome || "Non specificato"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Email</p>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">
+                        {user.email}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div>
-              <span className="block text-gray-500 dark:text-gray-400 text-xs">Email</span>
-              <span className="font-semibold text-gray-900 dark:text-gray-100">{user.email}</span>
+            <button
+              className="flex items-center gap-2 px-6 py-3 bg-amber-500 text-white rounded-full font-medium hover:bg-amber-600 transition-all duration-200 shadow-sm"
+              onClick={() => {
+                setShowModal(true);
+                setPasswordForm({ newPassword: '', confirmPassword: '' });
+                setPasswordError(null);
+                setPasswordSuccess(false);
+              }}
+            >
+              <KeyRound size={20} />
+              Cambia password
+            </button>
+          </div>
+        </div>
+
+        {/* Entities Section */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200/50 dark:border-gray-700/50 overflow-hidden">
+          <div className="px-6 py-6 border-b border-gray-200/50 dark:border-gray-700/50">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-medium text-gray-900 dark:text-white">
+                  Entità fiscali
+                </h2>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  Gestisci le tue entità fiscali collegate
+                </p>
+              </div>
+              <button
+                className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-full font-medium hover:bg-blue-700 transition-all duration-200 shadow-sm"
+                onClick={() => setShowAddEntityModal(true)}
+              >
+                <Plus size={20} />
+                Aggiungi entità
+              </button>
             </div>
           </div>
-          <button
-            className="flex items-center gap-2 px-4 py-2 rounded-md bg-amber-400 text-gray-900 font-semibold shadow hover:bg-amber-300 transition-all mt-4 sm:mt-0"
-            onClick={() => setShowModal(true)}
-          >
-            <KeyRound size={18} />
-            Cambia password
-          </button>
-        </div>
-      </div>
-      {/* MODALE CAMBIO PASSWORD */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg p-6 w-full max-w-sm relative animate-fade-in">
-            <button
-              className="absolute top-3 right-3 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-              onClick={() => setShowModal(false)}
-              aria-label="Chiudi"
-            >
-              <X size={20} />
-            </button>
-            <h2 className="text-lg font-bold mb-4">Cambia password</h2>
-            <form className="flex flex-col gap-4">
-              <div className="relative">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Nuova password"
-                  className="w-full px-4 py-3 rounded-md border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-500 transition pr-10"
-                />
-                <button
-                  type="button"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800 dark:hover:text-gray-200"
-                  onClick={() => setShowPassword((v) => !v)}
-                  tabIndex={-1}
-                  aria-label={showPassword ? "Nascondi password" : "Mostra password"}
-                >
-                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                </button>
-              </div>
-              <div className="relative">
-                <input
-                  type={showRepeat ? "text" : "password"}
-                  placeholder="Ripeti nuova password"
-                  className="w-full px-4 py-3 rounded-md border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-500 transition pr-10"
-                />
-                <button
-                  type="button"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800 dark:hover:text-gray-200"
-                  onClick={() => setShowRepeat((v) => !v)}
-                  tabIndex={-1}
-                  aria-label={showRepeat ? "Nascondi password" : "Mostra password"}
-                >
-                  {showRepeat ? <EyeOff size={20} /> : <Eye size={20} />}
-                </button>
-              </div>
-              <div className="flex gap-2 mt-2">
-                <button
-                  type="button"
-                  className="flex-1 px-4 py-2 rounded-md bg-gray-200 text-gray-900 font-semibold hover:bg-gray-300 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700 transition"
-                  onClick={() => setShowModal(false)}
-                >
-                  Annulla
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-2 rounded-md bg-gray-900 text-white font-semibold hover:bg-gray-700 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200 transition"
-                >
-                  Salva
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-      {/* MODALE AGGIUNTA ENTITÀ */}
-      {showAddEntityModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg p-6 w-full max-w-sm relative animate-fade-in">
-            <button
-              className="absolute top-3 right-3 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-              onClick={() => setShowAddEntityModal(false)}
-              aria-label="Chiudi"
-            >
-              <X size={20} />
-            </button>
-            <h2 className="text-lg font-bold mb-4">Aggiungi entità fiscale</h2>
-            <form className="flex flex-col gap-4" onSubmit={handleAddEntity}>
-              <input
-                type="text"
-                placeholder="Ragione sociale"
-                className="w-full px-4 py-3 rounded-md border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-500 transition"
-                value={form.name}
-                onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                required
-              />
-              <input
-                type="text"
-                placeholder="Partita IVA / CF"
-                className="w-full px-4 py-3 rounded-md border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-500 transition"
-                value={form.partita_iva}
-                onChange={e => setForm(f => ({ ...f, partita_iva: e.target.value }))}
-                required
-              />
-              <select
-                className="w-full px-4 py-3 rounded-md border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-500 transition"
-                value={form.tipo}
-                onChange={e => setForm(f => ({ ...f, tipo: e.target.value }))}
-                required
-              >
-                {ENTITY_TYPES.map(tipo => (
-                  <option key={tipo} value={tipo}>{tipo}</option>
-                ))}
-              </select>
-              {addEntityError && <div className="text-red-600 text-sm text-center mt-1">{addEntityError}</div>}
-              <div className="flex gap-2 mt-2">
-                <button
-                  type="button"
-                  className="flex-1 px-4 py-2 rounded-md bg-gray-200 text-gray-900 font-semibold hover:bg-gray-300 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700 transition"
-                  onClick={() => setShowAddEntityModal(false)}
-                  disabled={addEntityLoading}
-                >
-                  Annulla
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-2 rounded-md bg-gray-900 text-white font-semibold hover:bg-gray-700 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200 transition"
-                  disabled={addEntityLoading}
-                >
-                  {addEntityLoading ? 'Salvataggio...' : 'Salva'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-      {/* 4. Modale di modifica entità */}
-      {showEditEntityModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg p-6 w-full max-w-sm relative animate-fade-in">
-            <button
-              className="absolute top-3 right-3 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-              onClick={() => setShowEditEntityModal(false)}
-              aria-label="Chiudi"
-            >
-              <X size={20} />
-            </button>
-            <h2 className="text-lg font-bold mb-4">Modifica entità fiscale</h2>
-            <form className="flex flex-col gap-4" onSubmit={handleEditEntity}>
-              <input
-                type="text"
-                placeholder="Ragione sociale"
-                className="w-full px-4 py-3 rounded-md border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-500 transition"
-                value={editForm.name}
-                onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
-                required
-              />
-              <input
-                type="text"
-                placeholder="Partita IVA / CF"
-                className="w-full px-4 py-3 rounded-md border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-500 transition"
-                value={editForm.partita_iva}
-                onChange={e => setEditForm(f => ({ ...f, partita_iva: e.target.value }))}
-                required
-              />
-              <select
-                className="w-full px-4 py-3 rounded-md border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-500 transition"
-                value={editForm.tipo}
-                onChange={e => setEditForm(f => ({ ...f, tipo: e.target.value }))}
-                required
-              >
-                {ENTITY_TYPES.map(tipo => (
-                  <option key={tipo} value={tipo}>{tipo}</option>
-                ))}
-              </select>
-              {editEntityError && <div className="text-red-600 text-sm text-center mt-1">{editEntityError}</div>}
-              <div className="flex gap-2 mt-2">
-                <button
-                  type="button"
-                  className="flex-1 px-4 py-2 rounded-md bg-gray-200 text-gray-900 font-semibold hover:bg-gray-300 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700 transition"
-                  onClick={() => setShowEditEntityModal(false)}
-                  disabled={editEntityLoading}
-                >
-                  Annulla
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-2 rounded-md bg-gray-900 text-white font-semibold hover:bg-gray-700 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200 transition"
-                  disabled={editEntityLoading}
-                >
-                  {editEntityLoading ? 'Salvataggio...' : 'Salva'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold">Entità fiscali collegate</h2>
-        <button
-          className="flex items-center gap-2 px-4 py-2 rounded-md bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900 font-semibold shadow hover:bg-gray-700 dark:hover:bg-gray-200 transition-all"
-          onClick={() => setShowAddEntityModal(true)}
-        >
-          <Plus size={18} />
-          <span className="hidden sm:inline">Aggiungi entità</span>
-        </button>
-      </div>
-      <div className="overflow-x-auto rounded-lg shadow">
-        <table className="min-w-full bg-white dark:bg-gray-900 text-sm">
-          <thead>
-            <tr className="bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-200">
-              <th className="px-4 py-2 text-left">Nome</th>
-              <th className="px-4 py-2 text-left">P.IVA / CF</th>
-              <th className="px-4 py-2 text-left">Tipo</th>
-              <th className="px-4 py-2 text-left">Azioni</th>
-            </tr>
-          </thead>
-          <tbody>
-            {entitiesLoading ? (
-              <tr><td colSpan={4} className="text-center py-4 text-gray-400">Caricamento entità...</td></tr>
-            ) : entities.length === 0 ? (
-              <tr><td colSpan={4} className="text-center py-4 text-gray-400">Nessuna entità collegata</td></tr>
-            ) : (
-              entities.map((e) => (
-                <tr key={e.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                  <td className="px-4 py-2 font-medium">{e.name}</td>
-                  <td className="px-4 py-2 font-mono">{e.body?.partita_iva}</td>
-                  <td className="px-4 py-2">{e.body?.tipo}</td>
-                  <td className="px-4 py-2">
-                    <button className="flex items-center gap-1 px-3 py-1 rounded bg-gray-200 text-gray-900 text-xs font-semibold hover:bg-gray-300 transition dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
-                      onClick={() => handleEditClick(e)}>
-                      <Info size={16} />
-                      <span className="hidden sm:inline">Modifica</span>
-                    </button>
-                  </td>
+
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gray-50 dark:bg-gray-700/50">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Entità
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    P.IVA / CF
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Tipo
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Azioni
+                  </th>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              </thead>
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                {entitiesLoading ? (
+                  <tr>
+                    <td colSpan={4} className="text-center py-12">
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="w-6 h-6 bg-blue-600 rounded-full animate-pulse"></div>
+                        <p className="text-gray-500 dark:text-gray-400">Caricamento entità...</p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : entities.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="text-center py-12">
+                      <div className="flex flex-col items-center gap-2">
+                        <Building2 className="w-12 h-12 text-gray-300 dark:text-gray-600" />
+                        <p className="text-gray-500 dark:text-gray-400">Nessuna entità collegata</p>
+                        <p className="text-sm text-gray-400 dark:text-gray-500">
+                          Aggiungi la tua prima entità fiscale
+                        </p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  entities.map((e) => (
+                    <tr
+                      key={e.id}
+                      className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors duration-150"
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
+                            <Building2 className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                          </div>
+                          <div>
+                            <div className="text-sm font-medium text-gray-900 dark:text-white">
+                              {e.name}
+                            </div>
+                            {/* <div className="text-xs text-gray-500 dark:text-gray-400">
+                              ID: {e.id}
+                            </div> */}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <Hash className="w-4 h-4 text-gray-400" />
+                          <span className="text-sm font-mono text-gray-900 dark:text-white">
+                            {e.body?.partita_iva}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
+                          {e.body?.tipo}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <button
+                          className="flex items-center gap-1 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-200"
+                          onClick={() => handleEditClick(e)}
+                        >
+                          <Info size={16} />
+                          Modifica
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Password Change Modal */}
+        {showModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 w-full max-w-md relative">
+              <button
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                onClick={() => {
+                  setShowModal(false);
+                  setPasswordForm({ newPassword: '', confirmPassword: '' });
+                  setPasswordError(null);
+                  setPasswordSuccess(false);
+                }}
+                aria-label="Chiudi"
+              >
+                <X size={24} />
+              </button>
+              <h2 className="text-2xl font-medium text-gray-900 dark:text-white mb-6">
+                Cambia password
+              </h2>
+              <form className="space-y-4" onSubmit={handlePasswordChange}>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Nuova password"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all pr-12"
+                    value={passwordForm.newPassword}
+                    onChange={(e) => setPasswordForm(f => ({ ...f, newPassword: e.target.value }))}
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                    onClick={() => setShowPassword((v) => !v)}
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
+                <div className="relative">
+                  <input
+                    type={showRepeat ? "text" : "password"}
+                    placeholder="Ripeti nuova password"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all pr-12"
+                    value={passwordForm.confirmPassword}
+                    onChange={(e) => setPasswordForm(f => ({ ...f, confirmPassword: e.target.value }))}
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                    onClick={() => setShowRepeat((v) => !v)}
+                    tabIndex={-1}
+                  >
+                    {showRepeat ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
+                
+                {passwordError && (
+                  <div className="text-red-600 dark:text-red-400 text-sm bg-red-50 dark:bg-red-900/20 rounded-lg p-3">
+                    {passwordError}
+                  </div>
+                )}
+                
+                {passwordSuccess && (
+                  <div className="text-green-600 dark:text-green-400 text-sm bg-green-50 dark:bg-green-900/20 rounded-lg p-3">
+                    Password cambiata con successo!
+                  </div>
+                )}
+                
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    className="flex-1 px-4 py-3 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                    onClick={() => {
+                      setShowModal(false);
+                      setPasswordForm({ newPassword: '', confirmPassword: '' });
+                      setPasswordError(null);
+                      setPasswordSuccess(false);
+                    }}
+                    disabled={passwordLoading}
+                  >
+                    Annulla
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 px-4 py-3 rounded-xl bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
+                    disabled={passwordLoading}
+                  >
+                    {passwordLoading ? 'Cambio password...' : 'Salva'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Add Entity Modal */}
+        {showAddEntityModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 w-full max-w-md relative">
+              <button
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                onClick={() => setShowAddEntityModal(false)}
+                aria-label="Chiudi"
+              >
+                <X size={24} />
+              </button>
+              <h2 className="text-2xl font-medium text-gray-900 dark:text-white mb-6">
+                Aggiungi entità fiscale
+              </h2>
+              <form className="space-y-4" onSubmit={handleAddEntity}>
+                <input
+                  type="text"
+                  placeholder="Ragione sociale"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  value={form.name}
+                  onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                  required
+                />
+                <input
+                  type="text"
+                  placeholder="Partita IVA / CF"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  value={form.partita_iva}
+                  onChange={e => setForm(f => ({ ...f, partita_iva: e.target.value }))}
+                  required
+                />
+                <select
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  value={form.tipo}
+                  onChange={e => setForm(f => ({ ...f, tipo: e.target.value }))}
+                  required
+                >
+                  {ENTITY_TYPES.map(tipo => (
+                    <option key={tipo} value={tipo}>{tipo}</option>
+                  ))}
+                </select>
+                {addEntityError && (
+                  <div className="text-red-600 dark:text-red-400 text-sm bg-red-50 dark:bg-red-900/20 rounded-lg p-3">
+                    {addEntityError}
+                  </div>
+                )}
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    className="flex-1 px-4 py-3 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                    onClick={() => setShowAddEntityModal(false)}
+                    disabled={addEntityLoading}
+                  >
+                    Annulla
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 px-4 py-3 rounded-xl bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
+                    disabled={addEntityLoading}
+                  >
+                    {addEntityLoading ? 'Salvataggio...' : 'Salva'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Entity Modal */}
+        {showEditEntityModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 w-full max-w-md relative">
+              <button
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                onClick={() => setShowEditEntityModal(false)}
+                aria-label="Chiudi"
+              >
+                <X size={24} />
+              </button>
+              <h2 className="text-2xl font-medium text-gray-900 dark:text-white mb-6">
+                Modifica entità fiscale
+              </h2>
+              <form className="space-y-4" onSubmit={handleEditEntity}>
+                <input
+                  type="text"
+                  placeholder="Ragione sociale"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  value={editForm.name}
+                  onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+                  required
+                />
+                <input
+                  type="text"
+                  placeholder="Partita IVA / CF"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  value={editForm.partita_iva}
+                  onChange={e => setEditForm(f => ({ ...f, partita_iva: e.target.value }))}
+                  required
+                />
+                <select
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  value={editForm.tipo}
+                  onChange={e => setEditForm(f => ({ ...f, tipo: e.target.value }))}
+                  required
+                >
+                  {ENTITY_TYPES.map(tipo => (
+                    <option key={tipo} value={tipo}>{tipo}</option>
+                  ))}
+                </select>
+                {editEntityError && (
+                  <div className="text-red-600 dark:text-red-400 text-sm bg-red-50 dark:bg-red-900/20 rounded-lg p-3">
+                    {editEntityError}
+                  </div>
+                )}
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    className="flex-1 px-4 py-3 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                    onClick={() => setShowEditEntityModal(false)}
+                    disabled={editEntityLoading}
+                  >
+                    Annulla
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 px-4 py-3 rounded-xl bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
+                    disabled={editEntityLoading}
+                  >
+                    {editEntityLoading ? 'Salvataggio...' : 'Salva'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
-      <style jsx>{`
-        .animate-fade-in {
-          animation: fadeIn 0.2s ease;
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; transform: scale(0.98); }
-          to { opacity: 1; transform: scale(1); }
-        }
-      `}</style>
     </div>
   );
 } 
